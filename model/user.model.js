@@ -1,65 +1,62 @@
 import mongoose from "mongoose";
-import jwt from "jsonwebtoken";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
-const userSchema = new mongoose.Schema({
-    name:{
-        type: String,
-        required: true
+const userSchema = new mongoose.Schema(
+  {
+    name: { type: String },
+    email: { type: String, unique: true },
+    password: { type: String, select: 0 },
+    username: { type: String, unique: true },
+    phone: { type: String },
+
+    avatar: {
+      public_id: { type: String, default: "" },
+      url: { type: String, default: "" },
     },
-    email:{
-        type: String,
-        required: true,
-        unique: true
+
+    address: {
+      type: String,
     },
-    password:{
-        type: String,
-        required: true
+    verificationInfo: {
+      verified: { type: Boolean, default: false },
+      token: { type: String, default: "" },
     },
-    refreshToken:{
-        type: String,
-        default: null
-    },
-},
-{
-    timestamps: true
+    password_reset_token: { type: String, default: "" },
+    refreshToken: { type: String, default: "" },
+    lastActive: { type: Date, default: Date.now },
+    deviceToken: { type: String },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// Pre save middleware: Hash password
+userSchema.pre("save", async function (next) {
+  const user = this;
+
+  if (user.isModified("password")) {
+    const saltRounds = Number(process.env.bcrypt_salt_round) || 10;
+    user.password = await bcrypt.hash(user.password, saltRounds);
+  }
+
+  next();
 });
 
-userSchema.pre("save", async function(next) {
-    if(!this.isModified("password")) return next();
-    this.password = await bcrypt.hash(this.password, 10);
-    next();
-})
+userSchema.statics.isUserExistsByEmail = async function (email) {
+  return await User.findOne({ email }).select("+password");
+};
 
-userSchema.methods.isPasswordCorrect = async function (password) {
-    return await bcrypt.compare(password, this.password);
-}
+userSchema.statics.isOTPVerified = async function (id) {
+  const user = await User.findById(id).select("+verificationInfo");
+  return user?.verificationInfo.verified;
+};
 
-userSchema.methods.generateAccessToken = async function () {
-return jwt.sign(
-    {
-        _id : this._id,
-        email: this.email,
-        name: this.name,
-    },
-    process.env.ACCESS_TOKEN_SECRET,
-    { expiresIn: process.env.ACCESS_TOKEN_EXPIRY
- }
-)
-}
+userSchema.statics.isPasswordMatched = async function (
+  plainTextPassword,
+  hashPassword
+) {
+  return await bcrypt.compare(plainTextPassword, hashPassword);
+};
 
-userSchema.methods.generateRefreshToken = async function () {
-return jwt.sign(
-    {
-        _id : this._id,
-    },
-    process.env.REFRESH_TOKEN_SECRET,
-    { expiresIn: process.env.REFRESH_TOKEN_EXPIRY
- }
-)
-}
-
-
-const User = mongoose.model("User", userSchema);
-
-export default User; 
+export const User = mongoose.model("User", userSchema);

@@ -1,13 +1,13 @@
 import httpStatus from "http-status";
-import { User } from "../model/user.model.js";
-import admin from "firebase-admin";
 import AppError from "../errors/AppError.js";
 import sendResponse from "../utils/sendResponse.js";
 import catchAsync from "../utils/catchAsync.js";
+import { User } from "./../model/user.model.js";
+import { Notification } from "./../model/notification.model";
 
-// Update device token for push notifications
-export const updateDeviceToken = catchAsync(async (req, res) => {
-  const { deviceToken } = req.body;
+// Create or update notification for user (replaces device token)
+export const createNotification = catchAsync(async (req, res) => {
+  const { title, body } = req.body;
   const userId = req.user._id;
 
   const user = await User.findById(userId);
@@ -15,60 +15,80 @@ export const updateDeviceToken = catchAsync(async (req, res) => {
     throw new AppError(httpStatus.NOT_FOUND, "User not found");
   }
 
-  user.deviceToken = deviceToken;
-  await user.save();
+  const notification = await Notification.create({
+    userId,
+    title,
+    body,
+  });
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "Device token updated successfully",
-    data: null,
+    message: "Notification created successfully",
+    data: notification,
   });
 });
 
-// Update last active timestamp
-export const updateLastActive = catchAsync(async (req, res) => {
+// Fetch unread notifications for the user
+export const getNotifications = catchAsync(async (req, res) => {
   const userId = req.user._id;
 
-  const user = await User.findById(userId);
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User not found");
-  }
-
-  user.lastActive = new Date();
-  await user.save();
+  const notifications = await Notification.find({ userId, isRead: false }).sort(
+    {
+      createdAt: -1,
+    }
+  );
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "Last active updated successfully",
+    message: "Notifications fetched successfully",
+    data: notifications,
+  });
+});
+
+// Mark notification as read
+export const markNotificationAsRead = catchAsync(async (req, res) => {
+  const { notificationId } = req.params;
+  const userId = req.user._id;
+
+  const notification = await Notification.findOne({
+    _id: notificationId,
+    userId,
+  });
+  if (!notification) {
+    throw new AppError(httpStatus.NOT_FOUND, "Notification not found");
+  }
+
+  notification.isRead = true;
+  await notification.save();
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Notification marked as read",
     data: null,
   });
 });
 
-// Send push notification reminders
+// Send notification reminders (automated via cron)
 export const sendReminders = async () => {
   const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
 
   const inactiveUsers = await User.find({
     lastActive: { $lt: sixHoursAgo },
-    deviceToken: { $exists: true, $ne: null },
   });
 
   for (const user of inactiveUsers) {
-    const message = {
-      notification: {
+    try {
+      await Notification.create({
+        userId: user._id,
         title: "Mood Tracker Reminder",
         body: "Hey, open the app and log your mood today!",
-      },
-      token: user.deviceToken,
-    };
-
-    try {
-      await admin.messaging().send(message);
-      console.log(`Notification sent to user ${user._id}`);
+      });
+      console.log(`Notification created for user ${user._id}`);
     } catch (error) {
-      console.error(`Error sending to user ${user._id}:`, error);
+      console.error(`Error creating notification for user ${user._id}:`, error);
     }
   }
 };

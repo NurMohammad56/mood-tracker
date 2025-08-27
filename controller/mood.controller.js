@@ -82,16 +82,8 @@ export const submitSatisfaction = catchAsync(async (req, res) => {
   const userId = req.user._id;
   const logId = req.params.id;
 
-  if (
-    !satisfaction ||
-    !["Very good", "Good", "Not so good", "Not good at all"].includes(
-      satisfaction
-    )
-  ) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      "Invalid or missing satisfaction"
-    );
+  if (!["so good", "very good", "good", "not good"].includes(satisfaction)) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Invalid satisfaction level");
   }
 
   const log = await Mood.findOne({ _id: logId, userId });
@@ -116,7 +108,7 @@ export const submitSatisfaction = catchAsync(async (req, res) => {
   });
 });
 
-// Get weekly logs
+// Get weekly logs (structured for 7 days: Today, Yesterday, etc.)
 export const getWeeklyLogs = catchAsync(async (req, res) => {
   const userId = req.user._id;
   const sevenDaysAgo = new Date();
@@ -128,11 +120,30 @@ export const getWeeklyLogs = catchAsync(async (req, res) => {
     date: { $gte: sevenDaysAgo },
   }).sort({ date: -1 });
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const structuredLogs = logs.map((log, index) => {
+    const logDate = new Date(log.date);
+    let dayLabel;
+    if (logDate.toDateString() === today.toDateString()) {
+      dayLabel = "Today";
+    } else if (logDate.getDate() === today.getDate() - 1) {
+      dayLabel = "Yesterday";
+    } else {
+      dayLabel = logDate.toLocaleDateString("en-US", { weekday: "long" });
+    }
+    return {
+      day: dayLabel,
+      date: log.date.toISOString().split("T")[0],
+      mood: log.mood,
+    };
+  });
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: "Weekly logs fetched successfully",
-    data: { logs },
+    data: structuredLogs,
   });
 });
 
@@ -160,22 +171,42 @@ export const updateTracker = catchAsync(async (req, res) => {
   });
 });
 
-// Get mood details with motivations
+// Get mood details (specific day with full details)
 export const getMoodDetails = catchAsync(async (req, res) => {
   const userId = req.user._id;
-  const logs = await Mood.find({ userId }).sort({ date: -1 }).limit(30);
+  const { date } = req.query;
 
-  const enhancedLogs = await Promise.all(
-    logs.map(async (log) => {
-      const motivation = await generateMotivation(log.mood);
-      return { ...log.toObject(), motivation };
-    })
-  );
+  if (!date) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Date query parameter is required"
+    );
+  }
+
+  const targetDate = new Date(date);
+  targetDate.setHours(0, 0, 0, 0);
+  const nextDay = new Date(targetDate);
+  nextDay.setDate(targetDate.getDate() + 1);
+
+  const log = await Mood.findOne({
+    userId,
+    date: { $gte: targetDate, $lt: nextDay },
+  });
+
+  if (!log) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      "No mood log found for the specified date"
+    );
+  }
+
+  const motivation = await generateMotivation(log.mood);
+  const enhancedLog = { ...log.toObject(), motivation };
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "Mood details fetched successfully",
-    data: enhancedLogs,
+    message: "Mood details for specific day fetched successfully",
+    data: enhancedLog,
   });
 });

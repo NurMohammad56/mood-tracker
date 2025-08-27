@@ -6,6 +6,8 @@ import cookieParser from "cookie-parser";
 import router from "./mainroute/index.js";
 import { createServer } from "http";
 import { Server } from "socket.io";
+import cron from "node-cron";
+import { sendReminders } from "././controller/notification.controller.js";
 
 import globalErrorHandler from "./middleware/globalErrorHandler.js";
 import notFound from "./middleware/notFound.js";
@@ -66,6 +68,9 @@ io.on("connection", (socket) => {
     console.log("Client disconnected:", socket.id);
   });
 });
+
+// cron jobs
+cron.schedule("0 * * * *", sendReminders);
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, async () => {

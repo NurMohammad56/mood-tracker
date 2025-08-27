@@ -5,7 +5,6 @@ import sendResponse from "../utils/sendResponse.js";
 import catchAsync from "../utils/catchAsync.js";
 import { Mood } from "../model/mood.model.js";
 
-// Get 7-day insights
 export const getSevenDaysInsights = catchAsync(async (req, res) => {
   const userId = req.user._id;
   const sevenDaysAgo = new Date();
@@ -16,13 +15,6 @@ export const getSevenDaysInsights = catchAsync(async (req, res) => {
     userId,
     date: { $gte: sevenDaysAgo },
   }).sort({ date: 1 });
-
-  if (logs.length === 0) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      "No mood logs found for the past 7 days"
-    );
-  }
 
   const graphData = logs.map((log) => ({
     date: log.date.toISOString().split("T")[0],
@@ -37,7 +29,7 @@ export const getSevenDaysInsights = catchAsync(async (req, res) => {
   });
 });
 
-// Get monthly insights
+// Get monthly insights (mood counts and satisfaction days chart)
 export const getMonthlyInsights = catchAsync(async (req, res) => {
   const userId = req.user._id;
   const oneMonthAgo = new Date();

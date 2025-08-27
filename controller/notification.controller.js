@@ -3,7 +3,7 @@ import AppError from "../errors/AppError.js";
 import sendResponse from "../utils/sendResponse.js";
 import catchAsync from "../utils/catchAsync.js";
 import { User } from "./../model/user.model.js";
-import { Notification } from "./../model/notification.model";
+import { Notification } from "./../model/notification.model.js";
 
 // Create or update notification for user (replaces device token)
 export const createNotification = catchAsync(async (req, res) => {

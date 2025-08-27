@@ -14,7 +14,7 @@ const generateMotivation = async (mood) => {
       messages: [
         {
           role: "user",
-          content: `Generate a unique motivational message for someone feeling ${mood}. Make it positive and encouraging. Keep it under 30 words.`,
+          content: `Generate a unique motivational message for someone feeling ${mood}. Make it positive and encouraging. Keep it under 20 words.`,
         },
       ],
     });
@@ -66,7 +66,7 @@ export const submitMood = catchAsync(async (req, res) => {
     );
   }
 
-  const log = await DailyLog.create({ userId, date: today, mood, thoughts });
+  const log = await Mood.create({ userId, date: today, mood, thoughts });
 
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
@@ -82,29 +82,34 @@ export const submitSatisfaction = catchAsync(async (req, res) => {
   const userId = req.user._id;
   const logId = req.params.id;
 
-  if (!["so good", "very good", "good", "not good"].includes(satisfaction)) {
+  if (
+    !["Very good", "Good", "Not so good", "Not good at all"].includes(
+      satisfaction
+    )
+  ) {
     throw new AppError(httpStatus.BAD_REQUEST, "Invalid satisfaction level");
   }
 
-  const log = await Mood.findOne({ _id: logId, userId });
-  if (!log) {
-    throw new AppError(httpStatus.NOT_FOUND, "Log not found");
+  const mood = await Mood.findOne({ _id: logId, userId });
+  if (!mood) {
+    throw new AppError(httpStatus.NOT_FOUND, "Mood not found");
   }
-  if (log.satisfaction) {
+
+  if (mood.satisfaction) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       "Satisfaction already submitted"
     );
   }
 
-  log.satisfaction = satisfaction;
-  await log.save();
+  mood.satisfaction = satisfaction;
+  await mood.save();
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: "Satisfaction submitted successfully",
-    data: log,
+    data: mood,
   });
 });
 
@@ -171,32 +176,35 @@ export const updateTracker = catchAsync(async (req, res) => {
   });
 });
 
-// Get mood details (specific day with full details)
+// Get all moods for a user
+export const getAllMoods = catchAsync(async (req, res) => {
+  const userId = req.user._id;
+
+  const moods = await Mood.find({ userId });
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "All moods fetched successfully",
+    data: moods,
+  });
+});
+
+// Get mood details (by ID instead of date)
 export const getMoodDetails = catchAsync(async (req, res) => {
   const userId = req.user._id;
-  const { date } = req.query;
+  const { moodId } = req.params;
 
-  if (!date) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      "Date query parameter is required"
-    );
+  if (!moodId) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Mood ID is required");
   }
 
-  const targetDate = new Date(date);
-  targetDate.setHours(0, 0, 0, 0);
-  const nextDay = new Date(targetDate);
-  nextDay.setDate(targetDate.getDate() + 1);
-
-  const log = await Mood.findOne({
-    userId,
-    date: { $gte: targetDate, $lt: nextDay },
-  });
+  const log = await Mood.findOne({ _id: moodId, userId });
 
   if (!log) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      "No mood log found for the specified date"
+      "No mood log found with the specified ID"
     );
   }
 
@@ -206,7 +214,7 @@ export const getMoodDetails = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "Mood details for specific day fetched successfully",
+    message: "Mood details fetched successfully by ID",
     data: enhancedLog,
   });
 });

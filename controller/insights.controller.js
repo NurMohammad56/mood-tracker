@@ -51,7 +51,7 @@ export const getMonthlyInsights = catchAsync(async (req, res) => {
     {}
   );
 
-  const satisfactionLogs = await DailyLog.aggregate([
+  const satisfactionLogs = await Mood.aggregate([
     {
       $match: {
         userId: new mongoose.Types.ObjectId(userId),

@@ -170,6 +170,33 @@ export const forgetPassword = catchAsync(async (req, res) => {
   });
 });
 
+export const verifyOTPForReset = catchAsync(async (req, res) => {
+  const { otp, email } = req.body;
+  const user = await User.isUserExistsByEmail(email);
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, "User not found");
+  }
+  if (!user.password_reset_token) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Password reset token is invalid"
+    );
+  }
+  const verify = await verifyToken(
+    user.password_reset_token,
+    process.env.OTP_SECRET
+  );
+  if (verify.otp !== otp) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Invalid OTP");
+  }
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "OTP Matched successfully",
+    data: {},
+  });
+});
+
 export const resetPassword = catchAsync(async (req, res) => {
   const { password, otp, email } = req.body;
   const user = await User.isUserExistsByEmail(email);

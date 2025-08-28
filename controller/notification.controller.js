@@ -86,7 +86,6 @@ export const sendReminders = async () => {
         title: "Mood Tracker Reminder",
         body: "Hey, open the app and log your mood today!",
       });
-      console.log(`Notification created for user ${user._id}`);
     } catch (error) {
       console.error(`Error creating notification for user ${user._id}:`, error);
     }

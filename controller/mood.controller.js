@@ -183,8 +183,8 @@ export const updateTracker = catchAsync(async (req, res) => {
     throw new AppError(httpStatus.NOT_FOUND, "Log not found");
   }
 
-  if (waterGlasses !== undefined) log.waterGlasses = waterGlasses;
-  if (sleepHours !== undefined) log.sleepHours = sleepHours;
+  if (waterGlasses !== undefined) log.waterGlasses += waterGlasses;
+  if (sleepHours !== undefined) log.sleepHours += sleepHours;
 
   await log.save();
 
@@ -195,6 +195,8 @@ export const updateTracker = catchAsync(async (req, res) => {
     data: log,
   });
 });
+
+//
 
 // Get all moods for a user
 export const getAllMoods = catchAsync(async (req, res) => {

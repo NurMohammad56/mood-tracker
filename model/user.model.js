@@ -4,7 +4,15 @@ import bcrypt from "bcryptjs";
 const userSchema = new mongoose.Schema(
   {
     name: { type: String },
-    email: { type: String, unique: true },
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      match: [
+        /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,})+$/,
+        "Please enter a valid email address",
+      ],
+    },
     password: { type: String, select: 0 },
     username: { type: String, unique: true },
     phone: { type: String },

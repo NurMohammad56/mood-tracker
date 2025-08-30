@@ -307,7 +307,22 @@ export const updateTracker = catchAsync(async (req, res) => {
   });
 });
 
-// Get all moods for a user
+// Get glass and water
+export const getGlassAndWater = catchAsync(async (req, res) => {
+  const userId = req.user._id;
+
+  // Only select waterGlasses and sleepHours fields
+  const logs = await Mood.find({ userId }).select("waterGlasses sleepHours");
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Water and sleep data fetched successfully",
+    data: logs,
+  });
+});
+
+// Get all moods for the current user
 export const getAllMoods = catchAsync(async (req, res) => {
   const userId = req.user._id;
 
@@ -316,7 +331,7 @@ export const getAllMoods = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "All moods fetched successfully",
+    message: "All moods for current user fetched successfully",
     data: moods,
   });
 });

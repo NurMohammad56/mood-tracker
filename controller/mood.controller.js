@@ -27,6 +27,51 @@ const generateMotivation = async (mood) => {
   }
 };
 
+// New function for AI-generated title
+const generateTitle = async (mood, satisfaction) => {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "user",
+          content: `Generate a short engaging title (3-5 words) for a daily mood log. Mood: ${mood}, Satisfaction: ${satisfaction}. Example: "Balanced", "Gentle", "Restore".`,
+        },
+      ],
+    });
+
+    let title = response.choices[0].message.content.trim();
+
+    title = title.replace(/^["']|["']$/g, "");
+
+    return title;
+  } catch (error) {
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      "Failed to generate daily title"
+    );
+  }
+};
+
+export const satisfactionDetailsMap = {
+  "Very good": {
+    type: "Gentle",
+    svg: "https://res.cloudinary.com/dbc8cfqkw/image/upload/v1756543061/Gentle_voindq.png",
+  },
+  "Not so good": {
+    type: "Sad",
+    svg: "https://res.cloudinary.com/dbc8cfqkw/image/upload/v1756543057/Sad_znewue.png",
+  },
+  "Not good at all": {
+    type: "Restore",
+    svg: "https://res.cloudinary.com/dbc8cfqkw/image/upload/v1756543062/Restore_nmakev.png",
+  },
+  Good: {
+    type: "Balanced",
+    svg: "https://res.cloudinary.com/dbc8cfqkw/image/upload/v1756543062/Balanced_scieug.png",
+  },
+};
+
 // Submit mood and thoughts
 export const submitMood = catchAsync(async (req, res) => {
   const { mood, thoughts } = req.body;
@@ -239,16 +284,26 @@ export const updateTracker = catchAsync(async (req, res) => {
     throw new AppError(httpStatus.NOT_FOUND, "Log not found");
   }
 
-  if (waterGlasses !== undefined) log.waterGlasses += waterGlasses;
-  if (sleepHours !== undefined) log.sleepHours += sleepHours;
+  // If provided, add values
+  if (waterGlasses !== undefined) log.waterGlasses += Number(waterGlasses);
+  if (sleepHours !== undefined) log.sleepHours += Number(sleepHours);
 
   await log.save();
+
+  // Calculate notes dynamically
+  const waterNote = log.waterGlasses >= 8 ? "Good" : "Bad";
+  const sleepNote = log.sleepHours >= 8 ? "Good" : "Bad";
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: "Trackers updated successfully",
-    data: log,
+    data: {
+      waterGlasses: log.waterGlasses,
+      waterNote,
+      sleepHours: log.sleepHours,
+      sleepNote,
+    },
   });
 });
 
@@ -266,7 +321,6 @@ export const getAllMoods = catchAsync(async (req, res) => {
   });
 });
 
-// Get mood details (by ID instead of date)
 export const getMoodDetails = catchAsync(async (req, res) => {
   const userId = req.user._id;
   const { moodId } = req.params;
@@ -284,8 +338,31 @@ export const getMoodDetails = catchAsync(async (req, res) => {
     );
   }
 
+  // AI helpers
   const motivation = await generateMotivation(log.mood);
-  const enhancedLog = { ...log.toObject(), motivation };
+  const title = await generateTitle(log.mood, log.satisfaction);
+
+  // Satisfaction mapping
+  const detailsType = satisfactionDetailsMap[log.satisfaction] || null;
+
+  // Water & Sleep notes
+  const waterNote = log.waterGlasses >= 8 ? "Good" : "Bad";
+  const sleepNote = log.sleepHours >= 8 ? "Good" : "Bad";
+
+  const enhancedLog = {
+    ...log.toObject(),
+    title,
+    motivation,
+    detailsType,
+    water: {
+      glasses: log.waterGlasses,
+      note: waterNote,
+    },
+    sleep: {
+      hours: log.sleepHours,
+      note: sleepNote,
+    },
+  };
 
   sendResponse(res, {
     statusCode: httpStatus.OK,

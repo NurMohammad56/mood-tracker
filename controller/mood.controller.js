@@ -32,46 +32,7 @@ export const submitMood = catchAsync(async (req, res) => {
   const { mood, thoughts } = req.body;
   const userId = req.user._id;
 
-  if (
-    !mood ||
-    ![
-      "😊 Happy",
-        "❤️ Romantic",
-        "🤩 Excited",
-        "🤪 Weird",
-        "🌈 Hopeful",
-        "😴 Sleepy",
-        "😫 Stressed",
-        "😡 Angry",
-        "😐 Neutral",
-        "😢 Sad",
-        "😌 Relaxed",
-        "💪 Motivated",
-        "✨ Inspired",
-        "🎨 Creative",
-        "🤔 Thoughtful",
-        "🪞 Reflective",
-        "😔 Pensive",
-        "🌙 Dreamy",
-        "🕰️ Nostalgic",
-        "😭 Emotional",
-        "😰 Anxious",
-        "😕 Confused",
-        "😤 Frustrated",
-        "🤡 Silly",
-        "🧐 Curious",
-        "🏞️ Adventurous",
-        "❤️ Romantic",
-        "🤩 Excited",
-        "🤪 Weird",
-        "🌈 Hopeful",
-        "😴 Sleepy",
-        "😫 Stressed",
-        "😡 Angry",
-        "😐 Neutral",
-        "😢 Sad",
-    ].includes(mood)
-  ) {
+  if (!mood) {
     throw new AppError(httpStatus.BAD_REQUEST, "Invalid or missing mood");
   }
 

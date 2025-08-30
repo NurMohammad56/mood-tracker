@@ -36,6 +36,7 @@ export const getMonthlyInsights = catchAsync(async (req, res) => {
   oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
   oneMonthAgo.setHours(0, 0, 0, 0);
 
+  // Mood counts aggregation
   const moodLogs = await Mood.aggregate([
     {
       $match: {
@@ -51,6 +52,7 @@ export const getMonthlyInsights = catchAsync(async (req, res) => {
     {}
   );
 
+  // Satisfaction aggregation
   const satisfactionLogs = await Mood.aggregate([
     {
       $match: {
@@ -62,14 +64,30 @@ export const getMonthlyInsights = catchAsync(async (req, res) => {
   ]);
 
   const satisfactionCounts = satisfactionLogs.reduce(
-    (acc, item) => ({ ...acc, [item._id]: `${item.count} days` }),
+    (acc, item) => ({ ...acc, [item._id]: item.count }),
     {}
   );
+
+  // Ensure all 4 satisfaction levels exist
+  const satisfactionLevels = [
+    "Very good",
+    "Good",
+    "Not so good",
+    "Not good at all",
+  ];
+
+  const satisfaction = satisfactionLevels.map((level) => ({
+    name: level,
+    days: satisfactionCounts[level] || 0,
+  }));
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: "Monthly insights fetched successfully",
-    data: { moodCounts, satisfactionCounts },
+    data: {
+      moodCounts,
+      satisfaction, // formatted list for frontend chart
+    },
   });
 });

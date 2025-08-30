@@ -172,6 +172,62 @@ export const getWeeklyLogs = catchAsync(async (req, res) => {
   });
 });
 
+// Average weekly mood with all mood counts
+export const getAverageWeeklyMood = catchAsync(async (req, res) => {
+  const userId = req.user._id;
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  sevenDaysAgo.setHours(0, 0, 0, 0);
+
+  const logs = await Mood.find({
+    userId,
+    date: { $gte: sevenDaysAgo },
+  });
+
+  if (logs.length === 0) {
+    return sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "No mood logs found for the past week",
+      data: null,
+    });
+  }
+
+  // Count moods
+  const moodCounts = logs.reduce((acc, log) => {
+    acc[log.mood] = (acc[log.mood] || 0) + 1;
+    return acc;
+  }, {});
+
+  const totalDays = logs.length;
+
+  // Find the most frequent mood
+  let topMood = null;
+  let topCount = 0;
+  for (const [mood, count] of Object.entries(moodCounts)) {
+    if (count > topCount) {
+      topMood = mood;
+      topCount = count;
+    }
+  }
+
+  const responseData = {
+    totalDays,
+    moodCounts, // { Happy: 4, Sad: 1, Good: 1, Anxious: 1, ... }
+    topMood: {
+      mood: topMood,
+      count: topCount,
+    },
+  };
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Weekly mood overview fetched successfully",
+    data: responseData,
+  });
+});
+
 // Update water and sleep trackers
 export const updateTracker = catchAsync(async (req, res) => {
   const { waterGlasses, sleepHours } = req.body;
@@ -195,8 +251,6 @@ export const updateTracker = catchAsync(async (req, res) => {
     data: log,
   });
 });
-
-//
 
 // Get all moods for a user
 export const getAllMoods = catchAsync(async (req, res) => {

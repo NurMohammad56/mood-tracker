@@ -6,6 +6,7 @@ import {
   updateTracker,
   getAllMoods,
   getMoodDetails,
+  getAverageWeeklyMood,
 } from "../controller/mood.controller.js";
 import {
   getSevenDaysInsights,
@@ -36,5 +37,6 @@ router.get("/details/:moodId", getMoodDetails);
 // Insights
 router.get("/insights/7days", getSevenDaysInsights);
 router.get("/insights/monthly", getMonthlyInsights);
+router.get("/average-weekly", getAverageWeeklyMood);
 
 export default router;

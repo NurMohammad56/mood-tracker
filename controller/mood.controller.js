@@ -307,17 +307,25 @@ export const updateTracker = catchAsync(async (req, res) => {
   });
 });
 
-// Get glass and water
+// Get today's glass and water
 export const getGlassAndWater = catchAsync(async (req, res) => {
   const userId = req.user._id;
 
-  // Only select waterGlasses and sleepHours fields
-  const logs = await Mood.find({ userId }).select("waterGlasses sleepHours");
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const endOfDay = new Date();
+  endOfDay.setHours(23, 59, 59, 999);
+
+  const logs = await Mood.findOne({
+    userId,
+    createdAt: { $gte: startOfDay, $lte: endOfDay },
+  }).select("waterGlasses sleepHours");
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "Water and sleep data fetched successfully",
+    message: "Today's water and sleep data fetched successfully",
     data: logs,
   });
 });

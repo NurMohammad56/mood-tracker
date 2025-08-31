@@ -284,13 +284,24 @@ export const updateTracker = catchAsync(async (req, res) => {
     throw new AppError(httpStatus.NOT_FOUND, "Log not found");
   }
 
-  // If provided, add values
-  if (waterGlasses !== undefined) log.waterGlasses += Number(waterGlasses);
-  if (sleepHours !== undefined) log.sleepHours += Number(sleepHours);
+  // Update and clamp values between 0–10
+  if (waterGlasses !== undefined) {
+    log.waterGlasses = Math.min(
+      10,
+      Math.max(0, log.waterGlasses + Number(waterGlasses))
+    );
+  }
+
+  if (sleepHours !== undefined) {
+    log.sleepHours = Math.min(
+      10,
+      Math.max(0, log.sleepHours + Number(sleepHours))
+    );
+  }
 
   await log.save();
 
-  // Calculate notes dynamically
+  // Notes
   const waterNote = log.waterGlasses >= 8 ? "Good" : "Bad";
   const sleepNote = log.sleepHours >= 8 ? "Good" : "Bad";
 

@@ -55,8 +55,8 @@ const moodSchema = new mongoose.Schema(
       type: String,
       enum: ["Very good", "Good", "Not so good", "Not good at all"],
     },
-    waterGlasses: { type: Number, default: 0 },
-    sleepHours: { type: Number, default: 0 },
+    waterGlasses: { type: Number, default: 0, min: 0, max: 10 },
+    sleepHours: { type: Number, default: 0, min: 0, max: 10 },
   },
   { timestamps: true }
 );

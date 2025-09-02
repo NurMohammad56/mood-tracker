@@ -57,6 +57,7 @@ const moodSchema = new mongoose.Schema(
     },
     waterGlasses: { type: Number, default: 0, min: 0, max: 10 },
     sleepHours: { type: Number, default: 0, min: 0, max: 10 },
+    status: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

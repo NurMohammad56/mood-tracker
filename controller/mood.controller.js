@@ -7,6 +7,7 @@ import catchAsync from "../utils/catchAsync.js";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// AI=Generated motivation
 const generateMotivation = async (mood) => {
   try {
     const response = await openai.chat.completions.create({
@@ -27,7 +28,7 @@ const generateMotivation = async (mood) => {
   }
 };
 
-// New function for AI-generated title
+// AI-generated title
 const generateTitle = async (mood, satisfaction) => {
   try {
     const response = await openai.chat.completions.create({

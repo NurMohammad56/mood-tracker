@@ -27,7 +27,7 @@ const getTransporter = () => {
   return transporter;
 };
 
-export const sendEmail = async (to, subject, html) => {
+export const sendEmail = async (to, subject, html, options = {}) => {
   try {
     const mailTransporter = getTransporter();
     await mailTransporter.sendMail({
@@ -40,6 +40,7 @@ export const sendEmail = async (to, subject, html) => {
         ? subject
         : "Password change Link : change it by 10 minutes",
       html,
+      attachments: options.attachments || [],
     });
   } catch (error) {
     console.error("Email send failed:", error.message);
@@ -73,6 +74,29 @@ export const sendMessageTemplate = ({ email, name, phone, message }) => {
         This message was sent via the Quantivo contact form.<br />
         &copy; 2025 Quantivo. All rights reserved.
       </footer>
+    </div>
+  `;
+};
+
+export const sendFeedbackTemplate = ({ email, name, subject, message }) => {
+  return `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 680px; margin: auto; border: 1px solid #e5e7eb; padding: 28px; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);">
+      <header style="padding-bottom: 18px; border-bottom: 1px solid #e5e7eb;">
+        <h1 style="margin: 0; color: #111827; font-size: 24px;">New App Feedback</h1>
+        <p style="margin: 8px 0 0; color: #6b7280; font-size: 14px;">
+          A user submitted feedback from Honest Health Track.
+        </p>
+      </header>
+
+      <section style="padding: 20px 0;">
+        <p style="margin: 0 0 10px; color: #111827; font-size: 15px;"><strong>From:</strong> ${name || "Unknown user"}</p>
+        <p style="margin: 0 0 10px; color: #111827; font-size: 15px;"><strong>Email:</strong> ${email || "No email available"}</p>
+        <p style="margin: 0 0 16px; color: #111827; font-size: 15px;"><strong>Subject:</strong> ${subject}</p>
+
+        <div style="padding: 18px; background-color: #f9fafb; border-left: 4px solid #7c3aed; border-radius: 8px;">
+          <p style="margin: 0; color: #374151; white-space: pre-wrap; line-height: 1.6;">${message}</p>
+        </div>
+      </section>
     </div>
   `;
 };

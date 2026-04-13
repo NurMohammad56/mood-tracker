@@ -7,6 +7,53 @@ import catchAsync from "../utils/catchAsync.js";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+const canonicalMoods = [
+  "😊 Happy",
+  "🫩 Tired",
+  "❤️ Romantic",
+  "🤩 Excited",
+  "🤪 Weird",
+  "🌈 Hopeful",
+  "😴 Sleepy",
+  "😫 Stressed",
+  "😡 Angry",
+  "😐 Neutral",
+  "😢 Sad",
+  "😌 Relaxed",
+  "💪 Motivated",
+  "✨ Inspired",
+  "🎨 Creative",
+  "🤔 Thoughtful",
+  "🪞 Reflective",
+  "🌙 Dreamy",
+  "🕰️ Nostalgic",
+  "😭 Emotional",
+  "😰 Anxious",
+  "😕 Confused",
+  "😤 Frustrated",
+  "🤡 Silly",
+  "🧐 Curious",
+  "🏞️ Adventurous",
+  "😔 Pensive",
+];
+
+const moodAliases = {
+  "😪 Tired": "🫩 Tired",
+  "💭 Reflective": "🪞 Reflective",
+  "⏳ Nostalgic": "🕰️ Nostalgic",
+  "👀 Curious": "🧐 Curious",
+  "✈️ Adventurous": "🏞️ Adventurous",
+};
+
+const normalizeMood = (mood) => {
+  if (!mood || typeof mood !== "string") {
+    return "";
+  }
+
+  const trimmedMood = mood.trim();
+  return moodAliases[trimmedMood] || trimmedMood;
+};
+
 const getStartOfDay = (baseDate = new Date()) => {
   const start = new Date(baseDate);
   start.setHours(0, 0, 0, 0);
@@ -104,40 +151,11 @@ export const satisfactionDetailsMap = {
 };
 
 export const submitMood = catchAsync(async (req, res) => {
-  const { mood, thoughts } = req.body;
+  const { thoughts } = req.body;
+  const mood = normalizeMood(req.body.mood);
   const userId = req.user._id;
 
-  const validMoods = [
-    "😊 Happy",
-    "🫩 Tired",
-    "❤️ Romantic",
-    "🤩 Excited",
-    "🤪 Weird",
-    "🌈 Hopeful",
-    "😴 Sleepy",
-    "😫 Stressed",
-    "😡 Angry",
-    "😐 Neutral",
-    "😢 Sad",
-    "😌 Relaxed",
-    "💪 Motivated",
-    "✨ Inspired",
-    "🎨 Creative",
-    "🤔 Thoughtful",
-    "🪞 Reflective",
-    "🌙 Dreamy",
-    "🕰️ Nostalgic",
-    "😭 Emotional",
-    "😰 Anxious",
-    "😕 Confused",
-    "😤 Frustrated",
-    "🤡 Silly",
-    "🧐 Curious",
-    "🏞️ Adventurous",
-    "😔 Pensive",
-  ];
-
-  if (!mood || !validMoods.includes(mood)) {
+  if (!mood || !canonicalMoods.includes(mood)) {
     throw new AppError(httpStatus.BAD_REQUEST, "Invalid or missing mood");
   }
 

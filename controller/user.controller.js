@@ -4,6 +4,7 @@ import { uploadOnCloudinary } from "../utils/commonMethod.js";
 import AppError from "../errors/AppError.js";
 import sendResponse from "../utils/sendResponse.js";
 import catchAsync from "../utils/catchAsync.js";
+import { sendEmail, sendFeedbackTemplate } from "../utils/sendEmail.js";
 
 // Get user profile
 export const getProfile = catchAsync(async (req, res) => {
@@ -53,6 +54,81 @@ export const updateProfile = catchAsync(async (req, res) => {
     success: true,
     message: "Profile updated successfully",
     data: user,
+  });
+});
+
+export const submitFeedback = catchAsync(async (req, res) => {
+  const { subject, message } = req.body;
+
+  if (!subject || !subject.toString().trim()) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Subject is required");
+  }
+
+  if (!message || !message.toString().trim()) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Message is required");
+  }
+
+  const user = await User.findById(req.user._id).select("name email");
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, "User not found");
+  }
+
+  const ownerEmail =
+    process.env.FEEDBACK_EMAIL ||
+    process.env.FEEDBACK_TO_EMAIL ||
+    process.env.OWNER_EMAIL ||
+    process.env.SMTP_USER ||
+    process.env.EMAIL_USER;
+
+  if (!ownerEmail) {
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      "Feedback recipient email is not configured",
+    );
+  }
+
+  const trimmedSubject = subject.toString().trim();
+  const trimmedMessage = message.toString().trim();
+  const attachments = req.file
+    ? [
+        {
+          filename: req.file.originalname || "feedback-image.jpg",
+          content: req.file.buffer,
+          contentType: req.file.mimetype,
+        },
+      ]
+    : [];
+
+  const feedbackHtml = sendFeedbackTemplate({
+    email: user.email,
+    name: user.name,
+    subject: trimmedSubject,
+    message: trimmedMessage,
+  });
+
+  const emailTasks = [
+    sendEmail(ownerEmail, `App Feedback: ${trimmedSubject}`, feedbackHtml, {
+      attachments,
+    }),
+  ];
+
+  // For local/testing flows, also send a copy back to the user so the
+  // same inbox used for OTP verification can confirm feedback delivery.
+  if (user.email && user.email !== ownerEmail) {
+    emailTasks.push(
+      sendEmail(user.email, `Feedback Copy: ${trimmedSubject}`, feedbackHtml, {
+        attachments,
+      }),
+    );
+  }
+
+  await Promise.all(emailTasks);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Feedback sent successfully",
+    data: null,
   });
 });
 

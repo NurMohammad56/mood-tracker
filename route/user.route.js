@@ -2,6 +2,7 @@ import express from "express";
 import {
   getProfile,
   updateProfile,
+  submitFeedback,
   changePassword,
 } from "../controller/user.controller.js";
 import { protect } from "../middleware/auth.middleware.js";
@@ -16,6 +17,7 @@ router.patch(
   upload.single("avatar"),
   updateProfile
 );
+router.post("/feedback", protect, upload.single("attachment"), submitFeedback);
 router.post("/change-password", protect, changePassword);
 
 export default router;

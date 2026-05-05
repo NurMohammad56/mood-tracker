@@ -39,4 +39,4 @@ build/Release
 
 # Dependency directories
 node_modules/
-.env
+config.bat

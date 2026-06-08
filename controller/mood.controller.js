@@ -7,6 +7,83 @@ import catchAsync from "../utils/catchAsync.js";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+const canonicalMoods = [
+  "😊 Happy",
+  "🫩 Tired",
+  "❤️ Romantic",
+  "🤩 Excited",
+  "🤪 Weird",
+  "🌈 Hopeful",
+  "😴 Sleepy",
+  "😫 Stressed",
+  "😡 Angry",
+  "😐 Neutral",
+  "😢 Sad",
+  "😌 Relaxed",
+  "💪 Motivated",
+  "✨ Inspired",
+  "🎨 Creative",
+  "🤔 Thoughtful",
+  "🪞 Reflective",
+  "🌙 Dreamy",
+  "🕰️ Nostalgic",
+  "😭 Emotional",
+  "😰 Anxious",
+  "😕 Confused",
+  "😤 Frustrated",
+  "🤡 Silly",
+  "🧐 Curious",
+  "🏞️ Adventurous",
+  "😔 Pensive",
+];
+
+const moodAliases = {
+  "😪 Tired": "🫩 Tired",
+  "💭 Reflective": "🪞 Reflective",
+  "⏳ Nostalgic": "🕰️ Nostalgic",
+  "👀 Curious": "🧐 Curious",
+  "✈️ Adventurous": "🏞️ Adventurous",
+};
+
+const normalizeMood = (mood) => {
+  if (!mood || typeof mood !== "string") {
+    return "";
+  }
+
+  const trimmedMood = mood.trim();
+  return moodAliases[trimmedMood] || trimmedMood;
+};
+
+const getStartOfDay = (baseDate = new Date()) => {
+  const start = new Date(baseDate);
+  start.setHours(0, 0, 0, 0);
+  return start;
+};
+
+const getEndOfDay = (baseDate = new Date()) => {
+  const end = new Date(baseDate);
+  end.setHours(23, 59, 59, 999);
+  return end;
+};
+
+const serializeMoodState = (log) => {
+  if (!log) {
+    return null;
+  }
+
+  const data = typeof log.toObject === "function" ? log.toObject() : log;
+  const hasMood = Boolean(data.mood);
+  const hasSatisfaction = Boolean(data.satisfaction);
+
+  return {
+    ...data,
+    hasMood,
+    hasSatisfaction,
+    needsSatisfaction: hasMood && !hasSatisfaction,
+    alreadyCompleted: hasMood && hasSatisfaction,
+  };
+};
+
 // AI=Generated motivation
 const generateMotivation = async (mood) => {
   try {
@@ -23,7 +100,7 @@ const generateMotivation = async (mood) => {
   } catch (error) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      "Failed to generate motivational message"
+      "Failed to generate motivational message",
     );
   }
 };
@@ -49,7 +126,7 @@ const generateTitle = async (mood, satisfaction) => {
   } catch (error) {
     throw new AppError(
       httpStatus.INTERNAL_SERVER_ERROR,
-      "Failed to generate daily title"
+      "Failed to generate daily title",
     );
   }
 };
@@ -57,88 +134,76 @@ const generateTitle = async (mood, satisfaction) => {
 export const satisfactionDetailsMap = {
   "Very good": {
     type: "Gentle",
-    svg: "https://res.cloudinary.com/dbc8cfqkw/image/upload/v1756543061/Gentle_voindq.png",
+    svg: "https://res.cloudinary.com/dsj7zxc71/image/upload/v1763457595/Gentle_p06k88.png",
   },
   "Not so good": {
     type: "Sad",
-    svg: "https://res.cloudinary.com/dbc8cfqkw/image/upload/v1756543057/Sad_znewue.png",
+    svg: "https://res.cloudinary.com/dsj7zxc71/image/upload/v1763457594/Sad_u4xenl.png",
   },
   "Not good at all": {
     type: "Restore",
-    svg: "https://res.cloudinary.com/dbc8cfqkw/image/upload/v1756543062/Restore_nmakev.png",
+    svg: "https://res.cloudinary.com/dsj7zxc71/image/upload/v1763457595/Restore_awo60i.png",
   },
   Good: {
     type: "Balanced",
-    svg: "https://res.cloudinary.com/dbc8cfqkw/image/upload/v1756543062/Balanced_scieug.png",
+    svg: "https://res.cloudinary.com/dsj7zxc71/image/upload/v1763457595/Balanced_thpp1i.png",
   },
 };
 
-// Submit mood and thoughts
 export const submitMood = catchAsync(async (req, res) => {
-  const { mood, thoughts } = req.body;
+  const { thoughts } = req.body;
+  const mood = normalizeMood(req.body.mood);
   const userId = req.user._id;
 
-  if (
-    !mood ||
-    ![
-      "😊 Happy",
-      "❤️ Romantic",
-      "🤩 Excited",
-      "🤪 Weird",
-      "🌈 Hopeful",
-      "😴 Sleepy",
-      "😫 Stressed",
-      "😡 Angry",
-      "😐 Neutral",
-      "😢 Sad",
-      "😌 Relaxed",
-      "💪 Motivated",
-      "✨ Inspired",
-      "🎨 Creative",
-      "🤔 Thoughtful",
-      "🪞 Reflective",
-      "😔 Pensive",
-      "🌙 Dreamy",
-      "🕰️ Nostalgic",
-      "😭 Emotional",
-      "😰 Anxious",
-      "😕 Confused",
-      "😤 Frustrated",
-      "🤡 Silly",
-      "🧐 Curious",
-      "🏞️ Adventurous",
-      "❤️ Romantic",
-      "🤩 Excited",
-      "🤪 Weird",
-      "🌈 Hopeful",
-      "😴 Sleepy",
-      "😫 Stressed",
-      "😡 Angry",
-      "😐 Neutral",
-      "😢 Sad",
-    ].includes(mood)
-  ) {
+  if (!mood || !canonicalMoods.includes(mood)) {
     throw new AppError(httpStatus.BAD_REQUEST, "Invalid or missing mood");
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const startOfDay = getStartOfDay();
+  const endOfDay = getEndOfDay();
 
-  const existingLog = await Mood.findOne({ userId, date: { $gte: today } });
+  const existingLog = await Mood.findOne({
+    userId,
+    date: { $gte: startOfDay, $lte: endOfDay },
+  }).sort({ createdAt: -1 });
+
   if (existingLog) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      "Mood already submitted for today"
-    );
+    if (!existingLog.mood) {
+      existingLog.mood = mood;
+      existingLog.thoughts = thoughts;
+      existingLog.date = startOfDay;
+      await existingLog.save();
+
+      sendResponse(res, {
+        statusCode: httpStatus.OK,
+        success: true,
+        message: "Mood submitted successfully, now submit satisfaction",
+        data: serializeMoodState(existingLog),
+      });
+      return;
+    }
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Mood for today already submitted, now submit satisfaction",
+      data: serializeMoodState(existingLog),
+    });
+    return;
   }
 
-  const log = await Mood.create({ userId, date: today, mood, thoughts });
+  const log = await Mood.create({
+    userId,
+    date: startOfDay,
+    mood,
+    thoughts,
+  });
 
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
     message: "Mood submitted successfully, now submit satisfaction",
-    data: log,
+    data: serializeMoodState(log),
   });
 });
 
@@ -150,7 +215,7 @@ export const submitSatisfaction = catchAsync(async (req, res) => {
 
   if (
     !["Very good", "Good", "Not so good", "Not good at all"].includes(
-      satisfaction
+      satisfaction,
     )
   ) {
     throw new AppError(httpStatus.BAD_REQUEST, "Invalid satisfaction level");
@@ -164,7 +229,7 @@ export const submitSatisfaction = catchAsync(async (req, res) => {
   if (mood.satisfaction) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      "Satisfaction already submitted"
+      "Satisfaction already submitted",
     );
   }
 
@@ -287,17 +352,11 @@ export const updateTracker = catchAsync(async (req, res) => {
 
   // Update and clamp values between 0–10
   if (waterGlasses !== undefined) {
-    log.waterGlasses = Math.min(
-      10,
-      Math.max(0, log.waterGlasses + Number(waterGlasses))
-    );
+    log.waterGlasses = Math.min(10, Math.max(0, Number(waterGlasses)));
   }
 
   if (sleepHours !== undefined) {
-    log.sleepHours = Math.min(
-      10,
-      Math.max(0, log.sleepHours + Number(sleepHours))
-    );
+    log.sleepHours = Math.min(10, Math.max(0, Number(sleepHours)));
   }
 
   await log.save();
@@ -332,7 +391,7 @@ export const getGlassAndWater = catchAsync(async (req, res) => {
   const logs = await Mood.findOne({
     userId,
     createdAt: { $gte: startOfDay, $lte: endOfDay },
-  }).select("waterGlasses sleepHours");
+  }).select("_id waterGlasses sleepHours");
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -369,7 +428,7 @@ export const getMoodDetails = catchAsync(async (req, res) => {
   if (!log) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      "No mood log found with the specified ID"
+      "No mood log found with the specified ID",
     );
   }
 
@@ -404,5 +463,26 @@ export const getMoodDetails = catchAsync(async (req, res) => {
     success: true,
     message: "Mood details fetched successfully by ID",
     data: enhancedLog,
+  });
+});
+
+export const getTodayMood = catchAsync(async (req, res) => {
+  const userId = req.user._id;
+
+  const startOfDay = getStartOfDay();
+  const endOfDay = getEndOfDay();
+
+  const mood = await Mood.findOne({
+    userId,
+    date: { $gte: startOfDay, $lte: endOfDay },
+  })
+    .sort({ createdAt: -1 })
+    .select("_id date mood satisfaction");
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Today's mood fetched successfully",
+    data: serializeMoodState(mood),
   });
 });

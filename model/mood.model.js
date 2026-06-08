@@ -13,6 +13,7 @@ const moodSchema = new mongoose.Schema(
       required: true,
       enum: [
         "😊 Happy",
+        "🫩 Tired",
         "❤️ Romantic",
         "🤩 Excited",
         "🤪 Weird",
@@ -28,7 +29,6 @@ const moodSchema = new mongoose.Schema(
         "🎨 Creative",
         "🤔 Thoughtful",
         "🪞 Reflective",
-        "😔 Pensive",
         "🌙 Dreamy",
         "🕰️ Nostalgic",
         "😭 Emotional",
@@ -59,7 +59,7 @@ const moodSchema = new mongoose.Schema(
     sleepHours: { type: Number, default: 0, min: 0, max: 10 },
     status: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 moodSchema.index({ userId: 1, date: 1 }, { unique: true });
